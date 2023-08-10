@@ -19,7 +19,7 @@
 
 #### Memory & Limits
 
-In Blender even selecting a face or a vertex is a step you can undo/redo. When you start a new project it's great to set up some limits high enough.
+For Blender even selecting a face or a vertex is a step you can undo/redo. When you start a new project it's great to set up some limits high enough.
 
 1. Go to `Edit > Prefecences`
 2. Choose `System` tab
