@@ -19,24 +19,24 @@
 
 #### Memory & Limits
 
-For Bledner even selecting a face or a vertex is the step you can undo/ redo. When you start a new project it's great to setup some limits high enough.
+In Blender even selecting a face or a vertex is a step you can undo/redo. When you start a new project it's great to set up some limits high enough.
 
 1. Go to `Edit > Prefecences`
 2. Choose `System` tab
 3. In `Memory & Limits` change the *Undo Steps* to 2048 (or higher) and *Undo Memory Limit* to 8192 (or higher)
 
-    **Tip**: Feel free to select any number - you are not forced to use 2 to the power of x values only
+    **Tip**: Feel free to select any number - you are not forced to use powers of 2
 
 #### Units
 
-Make sure you work with meters. Working on millimeters scale is very annoying :disappointed:
+Make sure you're working with meters. Work in millimeter scale is very annoying :disappointed:
 
 ### Ultimaker Cura
 
 1. Select printer (in my case it's Anycubic 4Max)
 2. Select filament (I suggest using PLA)
 
-![Utlimaker setup screen](./resources/cura-setup.png)
+![Ultimaker setup screen](./resources/cura-setup.png)
 
 ## 3D preparing model tips
 
@@ -51,8 +51,8 @@ Make sure you work with meters. Working on millimeters scale is very annoying :d
 ## Some 3D model requirements
 
 1. No faces inside the model
-2. Each face has **exactly** 4 verticies
-3. No more than one vertex in each coordinates. If at least two verticies have the same coordinates merge them
+2. Each face has **exactly** 4 vertices
+3. No more than one vertex in one place. If more verticies have the same coordinates merge them
 
 ## Exporting STL/ OBJ/ … model
 
@@ -61,7 +61,7 @@ In Blender:
 1. `File > Export > (choose .stl/ .obj/ …)`
 2. Export
 
-    *Probably you don't even need to change model scale*
+    *You probably don't even need to change the model scale*
 
 ## Preparing .gcode for 3D printer
 
@@ -75,9 +75,9 @@ In Ultimaker Cura
 ![Ultimaker print screen](./resources/cura-print-1.png)
 4. (3) Click `Slice`
 5. Check:
-    * (1) visually if model seems to be correct
+    * (1) visually if model seems correct
     * (2) print time
-    * (3) layers number
+    * (3) number of layers
     * (4) model size after print
 ![Ultimaker print screen 2](./resources/cura-print-2.png)
-6. `Save to Disk` - choose disk you want save to
+6. `Save to Disk` - choose disk you want to save to
