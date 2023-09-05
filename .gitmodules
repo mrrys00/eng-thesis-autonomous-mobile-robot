@@ -1,0 +1,3 @@
+[submodule "robot-autonomous-move/hokuyo-python-lib"]
+	path = robot-autonomous-move/hokuyo-python-lib
+	url = https://github.com/pasuder/hokuyo-python-lib.git

@@ -1,1 +1,4 @@
 .vscode/
+
+# ignore copied code from submodules
+robot-autonomous-move/hokuyo_lib/
