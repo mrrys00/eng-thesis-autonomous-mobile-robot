@@ -13,8 +13,8 @@ from time import sleep
 
 import serial
 
-from hokuyo_lib.driver import hokuyo
-from hokuyo_lib.tools import serial_port
+from src.hokuyo_lib.driver import hokuyo
+from src.hokuyo_lib.tools import serial_port
 
 UART_PORT = '/dev/ttyACM0'
 UART_SPEED = 19200
@@ -36,7 +36,8 @@ ser = serial.Serial(
 )
 
 if __name__ == '__main__':
-    laser_serial = serial.Serial(port=UART_PORT, baudrate=UART_SPEED, timeout=0.5)
+    laser_serial = serial.Serial(
+        port=UART_PORT, baudrate=UART_SPEED, timeout=0.5)
     port = serial_port.SerialPort(laser_serial)
 
     laser = hokuyo.Hokuyo(port)
@@ -59,10 +60,12 @@ if __name__ == '__main__':
             fixed_data[i] for i in fixed_data if abs(int(float(i))) <= front_angle
         ]
         print(front_obtacle_distances)
-        front_obtacle_distance: int = sum(front_obtacle_distances) / len(front_obtacle_distances)
+        front_obtacle_distance: int = sum(
+            front_obtacle_distances) / len(front_obtacle_distances)
 
         if front_obtacle_distance < turn_while_obstacle_is_closed_than:
-            print("I will change my direction, measured dist:", front_obtacle_distance)
+            print("I will change my direction, measured dist:",
+                  front_obtacle_distance)
             ser.write(str.encode(rotate_right))
         else:
             print("I will move forward, measured dist:", front_obtacle_distance)
