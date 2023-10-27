@@ -92,9 +92,10 @@
 
 2. URG Node:
 
-        mkdir ros2_workspace ros2_workspace/src
-        cd ros2_workspace/src
+        mkdir -p ros2_workspace/src/
+        cd ros2_workspace/src/
         git clone --recursive https://github.com/Hokuyo-aut/urg_node2.git
+        rosdep init
         rosdep update
         rosdep install -i --from-paths urg_node2
         cd ..
