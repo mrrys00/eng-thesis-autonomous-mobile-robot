@@ -7,7 +7,7 @@ import serial
 
 stopWheels = b"[s]\n"
 moveForward30 = b"[=<30l>,<30r>]\n"
-defaultMiabotPort = "/dev/ttys0"
+defaultMiabotPort = "/dev/ttyS0"
 defaultBaudrate = 115200
 
 ser = serial.Serial(
@@ -26,3 +26,5 @@ while True:
     print("start wheels fwd 30")
     ser.write(moveForward30)
     sleep(3)
+
+
