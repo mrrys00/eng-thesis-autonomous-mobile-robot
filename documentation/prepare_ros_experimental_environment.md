@@ -321,7 +321,9 @@ ros2 run extrapolation_algotihm exploration_algorithm_node  # TO DO for find nex
 ### Useful ROS commands
 
 ```sh
+ros2 node list -a
 ros2 topic list
 ros2 topic pub /topic1 std_msgs/String "data: aatest msg2"
+ros2 topic echo /topic1
 …
 ```
