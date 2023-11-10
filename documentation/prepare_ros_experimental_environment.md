@@ -48,6 +48,8 @@ It's much easier to develop new ROS feaures with GUI and better PC, for example 
     - pip3 `sudo apt install python3-pip`
     - vs code (if not installed yet)
 
+__NOTE__: To copy files (eg. ROS nodes) via scp use command `scp -P 2222 -r <your_username>@127.0.0.1:<your_source_path> <your_dest_path>`
+
 ## Setup ROS2 Humble on the VM
 
 ### Preinstall
@@ -174,7 +176,7 @@ colcon build
 source install/setup.bash
 ```
 
-### Create custom ROS package for goal finder (not tested yet)
+<!-- ### Create custom ROS package for goal finder (not tested yet)
 
 ```sh
     cd ros2_workspace/src/
@@ -187,7 +189,7 @@ source install/setup.bash
 pip3 install setuptools==58.2.0
 ``` -->
 
-Edit the **package.xml** in **python_data_processor/** and add:
+<!-- Edit the **package.xml** in **python_data_processor/** and add:
 
 ```xml
     <exec_depend>ament_index_python</exec_depend>
@@ -268,7 +270,7 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-```
+``` -->
 
 <!-- Modify the **setup.py** in **python_data_processor/** to look like this:
 
@@ -295,14 +297,16 @@ setup(
     },
 )
 ``` -->
-
+<!-- 
 Building and sourcing:
 
 ```
 cd ~/ros2_workspace/
 colcon build
 source install/setup.bash
-```
+``` -->
+
+Copy via scp the necessary node - described in nodes/README.md
 
 ### Launch them all!
 
@@ -315,7 +319,7 @@ ros2 run slam_toolbox async_slam_toolbox_node   # probably need additional confi
 ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap "name: {data: 'path_to_non_yet_existing_new_map'}"
 ros2 launch nav2_bringup bringup_launch.py use_sim_time:=false autostart:=true map:=path_to_created_before_new_map.yaml
 ros2 run python_data_processor data_processor   # TO DO process data from nav2_wayland_follower and send directly to miabot
-ros2 run extrapolation_algotihm exploration_algorithm_node  # TO DO for find next goals for miabot not tested yet
+ros2 run extrapolation_algotihm exploration_algorithm_node  # TO DO 
 ```
 
 ### Useful ROS commands
