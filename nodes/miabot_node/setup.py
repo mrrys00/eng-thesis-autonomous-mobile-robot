@@ -1,24 +1,3 @@
-# from setuptools import setup
-
-# package_name = 'miabot_node'
-
-# setup(
-#     name=package_name,
-#     version='0.0.1',
-#     packages=[],
-#     py_modules=[
-#         'miabot_node',
-#     ],
-#     install_requires=[
-#         'setuptools',
-#     ],
-#     entry_points={
-#         'console_scripts': [
-#             'miabot_node = miabot_node:main',
-#         ],
-#     },
-# )
-
 from setuptools import find_packages, setup
 
 package_name = 'miabot_node'
@@ -41,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            f'{package_name} = {package_name}.{package_name}:main'
         ],
     },
 )

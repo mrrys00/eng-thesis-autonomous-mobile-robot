@@ -9,9 +9,9 @@ import serial
 # TODO
 LINEAR_FACTOR = 1       # 1 real meter = 1.0 /cmd_vel = 25317 robot units
 ANGULAR_FACTOR = 1
-BASE_SPEED = 10
+BASE_SPEED = 10         # 0.02 m/s = 2cm/s = 10 robot units
 
-SERIAL_PORT = "/dev/ttyACM0"
+SERIAL_PORT = "/dev/ttyS0"
 BAUD_RATE = 115200
 
 FORWARD = "[o{}]\n"
@@ -21,7 +21,8 @@ RIGHT = "[n{}]\n"
 
 STOP = "[s]\n"
 
-testing_no_serial = True
+# False if scanner connected
+testing_no_serial = False
 
 class MiaBotNode(Node):
     def __init__(self):
@@ -45,7 +46,7 @@ class MiaBotNode(Node):
             Odometry,
             '/odom',
             10)
-        self.odom_timer = self.create_timer(1.0/31, self.publish_odom)      # 31 odometries / 1 sec
+        self.odom_timer = self.create_timer(1.0, self.publish_odom)      # 31 odometries / 1 sec
 
         self.latest_odom = Odometry()
 
@@ -94,7 +95,7 @@ class MiaBotNode(Node):
         odom_msg.twist.twist.angular.z = 0.5
         self.odom_publisher.publish(odom_msg)
 
-        self.get_logger().info(f'Odom\nlin x: {odom_msg.twist.twist.linear.x}\n ang z: {odom_msg.twist.twist.angular.z}\n')
+        self.get_logger().info(f'Odom\n\tlin x: {odom_msg.twist.twist.linear.x}\t\nang z: {odom_msg.twist.twist.angular.z}')
 
     def process_cmd_vel_to_wheels(
         self,
@@ -117,15 +118,15 @@ class MiaBotNode(Node):
         try:
             left_speed: int = args[0]
             right_speed: int = args[1]
-            message: str = f"[l{left_speed},r{right_speed}]\n"
+            message: str = f"[=<{left_speed}l>,<{right_speed}r>]\n"
             self.get_logger().info(f'Set speed to {message}')
-            self.serial_port.write(message.encode("utf-8"))
+            self.serial_port.write(message.encode('utf-8'))
             sleep(3)
-            self.serial_port.write(STOP.encode("utf-8"))
+            self.serial_port.write(STOP.encode('utf-8'))
         except:
             message: str = args[0]
             self.get_logger().warning(f'Sending message: {message}')
-            self.serial_port.write(message.encode("utf-8"))
+            self.serial_port.write(message.encode('utf-8'))
 
 def main(args=None):
     rclpy.init(args=args)
