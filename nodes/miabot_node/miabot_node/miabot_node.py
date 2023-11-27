@@ -12,6 +12,8 @@ import serial
 LINEAR_FACTOR = 500         # 1 real meter = 1.0 /cmd_vel = 25317 robot units
 DELTA_RADIUS = 0.03         # distance between singe wheel and robot center
 ODOM_FREQUENCY = 2**1       # odometry messages per second -> optimal 2**4 (?)
+
+MAX_SAFE_VELOCITY = 40
 # ANGULAR_FACTOR = 1
 
 
@@ -97,11 +99,11 @@ class MiaBotNode(Node):
             )
         )
 
-    def update_robot_data(self, duration: float):
+    def update_robot_pose_info(self, duration: float):
         """
-        
+        Calculates 
         """
-        actual_time = time_ns()
+        actual_time = time_ns() - self.init_time
         self.odom_msg.header.stamp.sec = int(actual_time // 10**9)
         self.odom_msg.header.stamp.nanosec = actual_time % 10**9
 
@@ -120,7 +122,7 @@ class MiaBotNode(Node):
         """
         Publishes messages to the /odom topic
         """
-        self.update_robot_data(1.0 / ODOM_FREQUENCY)
+        self.update_robot_pose_info(1.0 / ODOM_FREQUENCY)
 
         self.odom_publisher.publish(self.odom_msg)
         self.get_logger().info(f'Odom\nlin x: {self.odom_msg.twist.twist.linear.x}\n ang z: {self.odom_msg.twist.twist.angular.z}')
@@ -135,6 +137,11 @@ class MiaBotNode(Node):
         # TO DO - not suer if that works properly
         v_left = LINEAR_FACTOR * (linear - angular * DELTA_RADIUS)
         v_right = LINEAR_FACTOR * (linear + angular * DELTA_RADIUS)
+
+        if v_left > MAX_SAFE_VELOCITY or v_right > MAX_SAFE_VELOCITY:
+            self.get_logger().warning(f"Safe velocity exceeded:\n\tv_left: {v_left}\n\tv_right: {v_right}")
+
+        v_left, v_right = min(v_left, MAX_SAFE_VELOCITY), min(v_right, MAX_SAFE_VELOCITY)
 
         return int(v_left), int(v_right)
 
