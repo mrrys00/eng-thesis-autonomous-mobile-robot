@@ -2,7 +2,9 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-from time import sleep
+from time import sleep, time_ns
+
+from math import pi, sin, cos
 
 import serial
 
@@ -22,6 +24,8 @@ testing_no_serial = False
 class MiaBotNode(Node):
     def __init__(self):
         super().__init__('miabot_node')
+
+        self.init_time = time_ns()
 
         # Subscribe /cmd_vel
         self.cmd_vel_subscription = self.create_subscription(
@@ -45,18 +49,25 @@ class MiaBotNode(Node):
         def _init_odometry() -> Odometry:
             odom_msg = Odometry()
             odom_msg.header.frame_id = "odom"
+            odom_msg.header.stamp.sec = 0
+            odom_msg.header.stamp.nanosec = 0
 
-            odom_msg.pose.pose.position.x = 0.0
-            odom_msg.pose.pose.position.y = 0.0
-            odom_msg.pose.pose.position.z = 0.0
+            odom_msg.pose.pose.position.x = 0.0     # actual x
+            odom_msg.pose.pose.position.y = 0.0     # actual y
+            odom_msg.pose.pose.position.z = 0.0     # always 0
 
-            odom_msg.pose.pose.orientation.x = 0.0
-            odom_msg.pose.pose.orientation.y = 0.0
-            odom_msg.pose.pose.orientation.z = 0.0
-            odom_msg.pose.pose.orientation.w = 1.0
+            odom_msg.pose.pose.orientation.x = 0.0  # always 0
+            odom_msg.pose.pose.orientation.y = 0.0  # always 0
+            odom_msg.pose.pose.orientation.z = 0.0  # actual radian rotation
+            odom_msg.pose.pose.orientation.w = 1.0  # always 1.0
 
-            odom_msg.twist.twist.linear.x = 0.0
-            odom_msg.twist.twist.angular.z = 0.0
+            odom_msg.twist.twist.linear.x = 0.0     # linear
+            odom_msg.twist.twist.linear.y = 0.0     # always 0
+            odom_msg.twist.twist.linear.z = 0.0     # always 0
+
+            odom_msg.twist.twist.angular.x = 0.0    # always 0
+            odom_msg.twist.twist.angular.y = 0.0    # always 0
+            odom_msg.twist.twist.angular.z = 0.0    # angular
 
             return odom_msg
 
@@ -72,7 +83,8 @@ class MiaBotNode(Node):
         linear = msg.linear.x
         angular = msg.angular.z
 
-        self.update_robot_data(linear, angular)
+        self.odom_msg.twist.twist.linear.x = linear
+        self.odom_msg.twist.twist.angular.z = angular
 
         v_left, v_right = self.process_cmd_vel_to_wheels(
             linear,
@@ -85,18 +97,31 @@ class MiaBotNode(Node):
             )
         )
 
-    def update_robot_data(
-        self,
-        linear: float,
-        angular: float):
-        # TO DO
-        # ds = linear
+    def update_robot_data(self, duration: float):
+        """
+        
+        """
+        actual_time = time_ns()
+        self.odom_msg.header.stamp.sec = int(actual_time // 10**9)
+        self.odom_msg.header.stamp.nanosec = actual_time % 10**9
+
+        x_linear = self.odom_msg.twist.twist.linear.x
+        z_angular = self.odom_msg.twist.twist.angular.z
+        z_oriantation = self.odom_msg.pose.pose.orientation.z
+
+        self.odom_msg.pose.pose.position.x += cos(z_oriantation) * (x_linear*duration)      # actual x
+        self.odom_msg.pose.pose.position.y += sin(z_oriantation) * (x_linear*duration)      # actual y
+
+        self.odom_msg.pose.pose.orientation.z += (z_angular*duration) % (2*pi)
+
         self.odom_msg = self.odom_msg
 
     def publish_odom(self):
         """
         Publishes messages to the /odom topic
         """
+        self.update_robot_data(1.0 / ODOM_FREQUENCY)
+
         self.odom_publisher.publish(self.odom_msg)
         self.get_logger().info(f'Odom\nlin x: {self.odom_msg.twist.twist.linear.x}\n ang z: {self.odom_msg.twist.twist.angular.z}')
 
