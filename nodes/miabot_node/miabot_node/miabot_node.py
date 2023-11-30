@@ -12,7 +12,7 @@ import serial
 # TODO
 LINEAR_FACTOR = 500         # 1 real meter = 1.0 /cmd_vel = 25317 robot units
 DELTA_RADIUS = 0.03         # distance between singe wheel and robot center
-ODOM_FREQUENCY = 2**4       # odometry messages per second -> optimal 2**4 (?)
+ODOM_FREQUENCY = 2**6       # odometry messages per second -> optimal 2**5 (minimum 20Hz)
 
 MAX_SAFE_VELOCITY = 40
 # ANGULAR_FACTOR = 1
@@ -139,7 +139,8 @@ class MiaBotNode(Node):
         self.odom_msg.pose.pose.position.x += cos(z_oriantation) * (x_linear*duration)      # actual x 2d
         self.odom_msg.pose.pose.position.y += sin(z_oriantation) * (x_linear*duration)      # actual y 2d
 
-        self.odom_msg.pose.pose.orientation.z += (z_angular*duration) % (2*pi)              # actual z rotation
+        self.odom_msg.pose.pose.orientation.z += (z_angular*duration)                       # actual z rotation
+        self.odom_msg.pose.pose.orientation.z = (self.odom_msg.pose.pose.orientation.z + pi) % (2 * pi) - pi
 
         self.transform_msg.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
         self.transform_msg.transform.translation.y = self.odom_msg.pose.pose.position.y     # actual y 2d
@@ -156,7 +157,7 @@ class MiaBotNode(Node):
         tf_message.transforms.append(self.transform_msg)
 
         self.odom_publisher.publish(self.odom_msg)      # frame_id: odom; child_frame_id: base_footprint
-        self.tf_publisher.publish(tf_message)   # frame_id: odom; child_frame_id: base_footprint
+        # self.tf_publisher.publish(tf_message)   # frame_id: odom; child_frame_id: base_footprint  # potentially produces errors :')
         self.get_logger().info(f'Odom\nlin x: {self.odom_msg.twist.twist.linear.x}\n ang z: {self.odom_msg.twist.twist.angular.z}')
 
     def process_cmd_vel_to_wheels(
