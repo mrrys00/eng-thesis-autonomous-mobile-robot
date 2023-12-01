@@ -8,6 +8,7 @@ from time import sleep, time_ns
 from math import pi, sin, cos
 
 import serial
+import tf2_ros
 
 # TODO
 LINEAR_FACTOR = 500         # 1 real meter = 1.0 /cmd_vel = 25317 robot units
@@ -28,7 +29,7 @@ class MiaBotNode(Node):
     def __init__(self):
         super().__init__('miabot_node')
 
-        # self.init_time = time_ns()
+        self.update_frequency = 1.0 / ODOM_FREQUENCY
 
         # Subscribe /cmd_vel
         self.cmd_vel_subscription = self.create_subscription(
@@ -47,11 +48,20 @@ class MiaBotNode(Node):
             Odometry,
             '/odom',
             10)
-        self.tf_publisher = self.create_publisher(
-            TFMessage,
+        self.tf_publisher = self.create_publisher(      # change to TFMrssage!!! like ros2_tf
+            TransformStamped,
             '/tf',
             10)
-        self.publish_timer = self.create_timer(1.0 / ODOM_FREQUENCY, self.publish_odom_tf)
+        # self.tf_static_publisher = self.create_publisher(
+        #     TFMessage,
+        #     '/tf_static',
+        #     10)
+
+        # self.tf_static_publisher = tf2_ros.StaticTransformBroadcaster(self, 10)
+
+        self.odom_publish_timer = self.create_timer(self.update_frequency, self.publish_odom)
+        # self.tf_static_publish_timer = self.create_timer(self.update_frequency, self.publish_tf_static)
+        self.tf_publish_timer = self.create_timer(self.update_frequency, self.publish_tf)
 
         def _init_transform() -> TransformStamped:
             transform = TransformStamped()
@@ -102,6 +112,8 @@ class MiaBotNode(Node):
         self.odom_msg = _init_odometry()
         self.transform_msg = _init_transform()
 
+        # self.position_update_timer = self.create_timer(self.update_frequency, self.update_robot_pose_info)
+
 
     def cmd_vel_callback(self, msg: Twist):
         """
@@ -126,20 +138,21 @@ class MiaBotNode(Node):
             )
         )
 
-    def update_robot_pose_info(self, duration: float):
+    def update_robot_pose_info(self):
         """
         Calculates data to /tf and /odom topics 
         """
         self.odom_msg.header.stamp = self.get_clock().now().to_msg()
+        self.transform_msg.header.stamp = self.get_clock().now().to_msg()
 
         x_linear = self.odom_msg.twist.twist.linear.x
         z_angular = self.odom_msg.twist.twist.angular.z
         z_oriantation = self.odom_msg.pose.pose.orientation.z
 
-        self.odom_msg.pose.pose.position.x += cos(z_oriantation) * (x_linear*duration)      # actual x 2d
-        self.odom_msg.pose.pose.position.y += sin(z_oriantation) * (x_linear*duration)      # actual y 2d
+        self.odom_msg.pose.pose.position.x += cos(z_oriantation) * (x_linear*self.update_frequency)      # actual x 2d
+        self.odom_msg.pose.pose.position.y += sin(z_oriantation) * (x_linear*self.update_frequency)      # actual y 2d
 
-        self.odom_msg.pose.pose.orientation.z += (z_angular*duration)                       # actual z rotation
+        self.odom_msg.pose.pose.orientation.z += (z_angular*self.update_frequency)                       # actual z rotation
         self.odom_msg.pose.pose.orientation.z = (self.odom_msg.pose.pose.orientation.z + pi) % (2 * pi) - pi
 
         self.transform_msg.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
@@ -147,18 +160,29 @@ class MiaBotNode(Node):
 
         self.transform_msg.transform.rotation.z = self.odom_msg.pose.pose.orientation.z     # actual z rotation
 
-    def publish_odom_tf(self):
+    def publish_odom(self):
         """
         Publishes messages to the /odom topic
         """
-        self.update_robot_pose_info(1.0 / ODOM_FREQUENCY)
-
-        tf_message = TFMessage()
-        tf_message.transforms.append(self.transform_msg)
-
+        self.update_robot_pose_info()
         self.odom_publisher.publish(self.odom_msg)      # frame_id: odom; child_frame_id: base_footprint
         # self.tf_publisher.publish(tf_message)   # frame_id: odom; child_frame_id: base_footprint  # potentially produces errors :')
-        self.get_logger().info(f'Odom\nlin x: {self.odom_msg.twist.twist.linear.x}\n ang z: {self.odom_msg.twist.twist.angular.z}')
+        # self.tf_static_publisher.sendTransform(self.transform_msg)
+        # self.get_logger().info(f'Odom\nlin x: {self.odom_msg.twist.twist.linear.x}\n ang z: {self.odom_msg.twist.twist.angular.z}')
+
+    # def publish_tf_static(self):
+    #     """
+    #     Publishes messages to /tf_static topic
+    #     """
+    #     static_tf_message = TFMessage()
+    #     static_tf_message.transforms.append(self.transform_msg)
+    #     self.tf_static_publisher.publish(static_tf_message)
+
+    def publish_tf(self):
+        """
+        Publishes messages to /tf topic
+        """
+        self.tf_publisher.publish(self.transform_msg)
 
     def process_cmd_vel_to_wheels(
         self,
