@@ -32,12 +32,12 @@ It's much easier to develop new ROS feaures with GUI and better PC, for example 
    - install `sudo apt install openssh-server` and enable `sudo systemctl enable ssh` openssh-server, easy [manual](https://www.cyberciti.biz/faq/how-to-install-ssh-on-ubuntu-linux-using-apt-get/)
    - in the `/etc/ssh/sshd_config` uncomment lines
 
-     ```
-         Port 22
-         AddressFamily any
-         ListenAddress 0.0.0.0
-         ListenAddress ::
-     ```
+    ```
+        Port 22
+        AddressFamily any
+        ListenAddress 0.0.0.0
+        ListenAddress ::
+    ```
 
    - reload sshd: `sudo systemctl force-reload sshd`
    - verify if machine is set on 22 port `sudo netstat -tlnp | grep ssh`
@@ -47,6 +47,10 @@ It's much easier to develop new ROS feaures with GUI and better PC, for example 
 8. Install packeges
     - pip3 `sudo apt install python3-pip`
     - vs code (if not installed yet)
+9. Add change owner to *~/.bashrc*:
+    ```
+        echo <password> | sudo -S chown $USER /dev/ttyACM0 /dev/ttyS0
+    ```
 
 __NOTE__: To copy files (eg. ROS nodes) via scp use command `scp -P 2222 -r <your_username>@127.0.0.1:<your_source_path> <your_dest_path>`
 
