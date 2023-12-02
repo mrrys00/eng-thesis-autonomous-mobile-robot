@@ -187,23 +187,27 @@ Copy via scp the necessary node - described in nodes/README.md
 In the separate terminals:
 
 ```sh
+# Don't run
 ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
-ros2 launch nav2_bringup rviz_launch.py
-# ros2 run python_data_processor data_processor   # TO DO process data from nav2_wayland_follower and send directly to miabot
+ros2 run python_data_processor data_processor   # TO DO process data from nav2_wayland_follower and send directly to miabot
 
+# run on VM / PC
+ros2 launch nav2_bringup rviz_launch.py
 ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint
 ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link
-ros2 launch urg_node2 urg_node2.launch.py
 ros2 run slam_toolbox async_slam_toolbox_node   # probably need additional configuration to make sure that it will create scnas only with actual odometry
-ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap "name: {data: 'path_to_non_yet_existing_new_map'}"
-ros2 run exploration_algotihm exploration_algorithm_node  # TO DO 
-ros2 run miabot_node miabot_node # TO DO
 ros2 launch nav2_bringup bringup_launch.py use_sim_time:=false autostart:=true map:=path_to_created_before_new_map.yaml # [component_container_isolated-1] [WARN] [1701377183.193325359] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...
+ros2 run exploration_algotihm exploration_algorithm_node  # TO DO 
+
+# run on RPi
+ros2 launch urg_node2 urg_node2.launch.py
+ros2 run miabot_node miabot_node # TO DO
 ```
 
 ### Useful ROS commands
 
 ```sh
+ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap "name: {data: 'path_to_non_yet_existing_new_map'}"
 ros2 node list -a
 ros2 topic list
 ros2 topic pub /topic1 std_msgs/String "data: aatest msg2"
