@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist, TransformStamped
+from rclpy.qos import QoSProfile, DurabilityPolicy
+from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
 from tf2_msgs.msg import TFMessage
 from nav_msgs.msg import Odometry
 from time import sleep, time_ns
@@ -29,7 +30,12 @@ class MiaBotNode(Node):
     def __init__(self):
         super().__init__('miabot_node')
 
+        # TO DO
+        # - change mapping base_link to base footprint 
+        # - base link to odom 
+
         self.update_frequency = 1.0 / ODOM_FREQUENCY
+        self.static_update_frequency = float(ODOM_FREQUENCY)
 
         # Subscribe /cmd_vel
         self.cmd_vel_subscription = self.create_subscription(
@@ -49,21 +55,24 @@ class MiaBotNode(Node):
             '/odom',
             10)
         self.tf_publisher = self.create_publisher(      # change to TFMrssage!!! like ros2_tf
-            TransformStamped,
+            TFMessage,
             '/tf',
             10)
+        # self.pose_publisher = self.create_publisher(
+        #     PoseStamped,
+        #     '/pose',
+        #     10)
         # self.tf_static_publisher = self.create_publisher(
         #     TFMessage,
         #     '/tf_static',
         #     10)
 
-        # self.tf_static_publisher = tf2_ros.StaticTransformBroadcaster(self, 10)
-
         self.odom_publish_timer = self.create_timer(self.update_frequency, self.publish_odom)
-        # self.tf_static_publish_timer = self.create_timer(self.update_frequency, self.publish_tf_static)
+        # self.tf_static_publish_timer = self.create_timer(self.static_update_frequency, self.publish_tf_static)
         self.tf_publish_timer = self.create_timer(self.update_frequency, self.publish_tf)
+        # self.pose_publish_timer = self.create_timer(self.update_frequency, self.publish_pose)
 
-        def _init_transform() -> TransformStamped:
+        def _init_transform_odom_base_footprint() -> TransformStamped:
             transform = TransformStamped()
             transform.header.frame_id = 'odom'
             transform.header.stamp = self.get_clock().now().to_msg()
@@ -82,6 +91,14 @@ class MiaBotNode(Node):
             transform.transform.rotation.w = 1.0        # always 1.0
 
             return transform
+
+        # def _init_transform_odom_base_link(tf_odom_base_ftpr: TransformStamped) -> TransformStamped:
+        #     tf_odom_base_ftpr.child_frame_id = 'base_link'
+        #     return tf_odom_base_ftpr
+        
+        # def _init_transform_base_foootprint_base_link(tf_odom_base_link: TransformStamped) -> TransformStamped:
+        #     tf_odom_base_link.header.frame_id = 'base_footprint'
+        #     return tf_odom_base_link
 
         def _init_odometry() -> Odometry:
             odom_msg = Odometry()
@@ -108,11 +125,28 @@ class MiaBotNode(Node):
             odom_msg.twist.twist.angular.z = 0.0    # angular valocity
 
             return odom_msg
+        
+        # def _init_pose() -> PoseStamped:
+        #     pose_msg = PoseStamped()
+        #     pose_msg.header.frame_id = 'map'
+        #     pose_msg.header.stamp = self.get_clock().now().to_msg()
+
+        #     pose_msg.pose.position.x = 0.0
+        #     pose_msg.pose.position.y = 0.0
+        #     pose_msg.pose.position.z = 0.0
+            
+        #     pose_msg.pose.orientation.x = 0.0
+        #     pose_msg.pose.orientation.y = 0.0
+        #     pose_msg.pose.orientation.z = 0.0
+        #     pose_msg.pose.orientation.w = 1.0
+
+        #     return pose_msg
 
         self.odom_msg = _init_odometry()
-        self.transform_msg = _init_transform()
-
-        # self.position_update_timer = self.create_timer(self.update_frequency, self.update_robot_pose_info)
+        self.transform_msg_odom_base_footprint = _init_transform_odom_base_footprint()
+        # self.transform_msg_odom_base_link = _init_transform_odom_base_link(self.transform_msg_odom_base_footprint)      # unnecessary ?
+        # self.transform_msg_base_footprint_base_link = _init_transform_base_foootprint_base_link(self.transform_msg_odom_base_link)
+        # self.pose_msg = _init_pose()        # provided by slam toolbox
 
 
     def cmd_vel_callback(self, msg: Twist):
@@ -143,7 +177,10 @@ class MiaBotNode(Node):
         Calculates data to /tf and /odom topics 
         """
         self.odom_msg.header.stamp = self.get_clock().now().to_msg()
-        self.transform_msg.header.stamp = self.get_clock().now().to_msg()
+        self.transform_msg_odom_base_footprint.header.stamp = self.get_clock().now().to_msg()
+        # self.transform_msg_odom_base_link.header.stamp = self.get_clock().now().to_msg()
+        # self.transform_msg_base_footprint_base_link.header.stamp = self.get_clock().now().to_msg()
+        # self.pose_msg.header.stamp = self.get_clock().now().to_msg()
 
         x_linear = self.odom_msg.twist.twist.linear.x
         z_angular = self.odom_msg.twist.twist.angular.z
@@ -155,10 +192,19 @@ class MiaBotNode(Node):
         self.odom_msg.pose.pose.orientation.z += (z_angular*self.update_frequency)                       # actual z rotation
         self.odom_msg.pose.pose.orientation.z = (self.odom_msg.pose.pose.orientation.z + pi) % (2 * pi) - pi
 
-        self.transform_msg.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
-        self.transform_msg.transform.translation.y = self.odom_msg.pose.pose.position.y     # actual y 2d
+        self.transform_msg_odom_base_footprint.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
+        # self.transform_msg_odom_base_link.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
+        # self.pose_msg.pose.position.x = self.odom_msg.pose.pose.position.x
+        # self.transform_msg_base_footprint_base_link.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
+        self.transform_msg_odom_base_footprint.transform.translation.y = self.odom_msg.pose.pose.position.y     # actual y 2d
+        # self.transform_msg_odom_base_link.transform.translation.y = self.odom_msg.pose.pose.position.y     # actual y 2d
+        # self.pose_msg.pose.position.y = self.odom_msg.pose.pose.position.y
+        # self.transform_msg_base_footprint_base_link.transform.translation.y = self.odom_msg.pose.pose.position.y     # actual y 2d
 
-        self.transform_msg.transform.rotation.z = self.odom_msg.pose.pose.orientation.z     # actual z rotation
+        self.transform_msg_odom_base_footprint.transform.rotation.z = self.odom_msg.pose.pose.orientation.z     # actual z rotation
+        # self.transform_msg_odom_base_link.transform.rotation.z = self.odom_msg.pose.pose.orientation.z     # actual z rotation
+        # self.pose_msg.pose.orientation.z = self.odom_msg.pose.pose.orientation.z
+        # self.transform_msg_base_footprint_base_link.transform.rotation.z = self.odom_msg.pose.pose.orientation.z     # actual z rotation
 
     def publish_odom(self):
         """
@@ -167,7 +213,7 @@ class MiaBotNode(Node):
         self.update_robot_pose_info()
         self.odom_publisher.publish(self.odom_msg)      # frame_id: odom; child_frame_id: base_footprint
         # self.tf_publisher.publish(tf_message)   # frame_id: odom; child_frame_id: base_footprint  # potentially produces errors :')
-        # self.tf_static_publisher.sendTransform(self.transform_msg)
+        # self.tf_static_publisher.sendTransform(self.transform_msg_odom_base_footprint)
         # self.get_logger().info(f'Odom\nlin x: {self.odom_msg.twist.twist.linear.x}\n ang z: {self.odom_msg.twist.twist.angular.z}')
 
     # def publish_tf_static(self):
@@ -175,14 +221,24 @@ class MiaBotNode(Node):
     #     Publishes messages to /tf_static topic
     #     """
     #     static_tf_message = TFMessage()
-    #     static_tf_message.transforms.append(self.transform_msg)
+    #     static_tf_message.transforms.append(self.transform_msg_odom_base_footprint)
     #     self.tf_static_publisher.publish(static_tf_message)
 
     def publish_tf(self):
         """
         Publishes messages to /tf topic
         """
-        self.tf_publisher.publish(self.transform_msg)
+        tfm = TFMessage()
+        tfm.transforms.append(self.transform_msg_odom_base_footprint)
+        # tfm.transforms.append(self.transform_msg_odom_base_link)      # unnecessary ?
+        self.tf_publisher.publish(tfm)
+
+    # def publish_pose(self):
+    #     """
+    #     Publishes messages to /pose topic
+    #     """
+    #     self.pose_publisher.publish(self.pose_msg)
+        # self.get_logger().info(f'Odom\nlin x: {self.odom_msg.twist.twist.linear.x}\n ang z: {self.odom_msg.twist.twist.angular.z}')
 
     def process_cmd_vel_to_wheels(
         self,
