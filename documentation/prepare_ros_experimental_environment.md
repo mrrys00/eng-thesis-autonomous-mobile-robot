@@ -189,14 +189,14 @@ In the separate terminals:
 ```sh
 # Don't run
 ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
+ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint
+ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link
 ros2 run python_data_processor data_processor   # TO DO process data from nav2_wayland_follower and send directly to miabot
 
 # run on VM / PC
 ros2 launch nav2_bringup rviz_launch.py
-ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint
-ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link
-ros2 run slam_toolbox async_slam_toolbox_node   # probably need additional configuration to make sure that it will create scnas only with actual odometry
-ros2 launch nav2_bringup bringup_launch.py use_sim_time:=false autostart:=true map:=path_to_created_before_new_map.yaml # [component_container_isolated-1] [WARN] [1701377183.193325359] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...
+ros2 run slam_toolbox async_slam_toolbox_node --ros-args --param-file mapper_params_online_async.yaml   # base_frame: base_link
+ros2 launch nav2_bringup navigation_launch.py use_sim_time:=false autostart:=true   # [component_container_isolated-1] [WARN] [1701377183.193325359] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...
 ros2 run exploration_algotihm exploration_algorithm_node  # TO DO 
 
 # run on RPi
@@ -208,12 +208,14 @@ ros2 run miabot_node miabot_node # TO DO
 
 ```sh
 ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap "name: {data: 'path_to_non_yet_existing_new_map'}"
-ros2 node list -a
+ros2 node list
 ros2 topic list
 ros2 topic pub /topic1 std_msgs/String "data: aatest msg2"
 ros2 topic echo /topic1
 ros2 run tf2_tools view_frames
 ros2 topic pub --once /cmd_vel geometry_msgs/Twist "{linear: {x: 0.01}, angular: {z: 0.0}}"
+ros2 param get /slam_toolbox base_frame
+ros2 param set /slam_toolbox base_frame base_link
 colcon build --packages-select miabot_node
 …
 ```
