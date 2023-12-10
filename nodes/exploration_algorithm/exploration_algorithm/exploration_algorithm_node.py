@@ -22,34 +22,28 @@ class ExplorationAlgorithm(Node):
 
     def map_callback(self, msg):
         # Przetwarzaj mapę
-        unexplored_points = self.find_unexplored_points(msg)
-        if unexplored_points:
-            # Jeśli znaleziono nieodwiedzone punkty, planuj trasę do pierwszego z nich
+        next_point = self.find_next_point(msg)
+        if next_point:
+            # Jeśli znaleziono nieodwiedzony punkt, planuj trasę do niego
             goal_pose = PoseStamped()
             goal_pose.header = Header()
             goal_pose.header.frame_id = 'map'
-            goal_pose.pose.position.x = unexplored_points[0][0]
-            goal_pose.pose.position.y = unexplored_points[0][1]
+            goal_pose.pose.position.x = next_point[0]
+            goal_pose.pose.position.y = next_point[1]
             goal_pose.pose.orientation.w = 1.0
 
             self.send_navigation_goal(goal_pose)
         else:
             self.get_logger().info('Exploration complete')
 
-    def find_unexplored_points(self, map):
-        unexplored_points = []
-        map_data = map.data
-        map_width = map.info.width
-        map_height = map.info.height
+    def find_next_point(self, map, margin=100):
+        next_point = None
 
-        for i in range(map_width):
-            for j in range(map_height):
-                if map_data[i + j * map_width] == -1:
-                    # Oznacza to nieznaną pozycję na mapie
-                    # Możesz dostosować warunek, aby uwzględniał pewne marginesy
-                    unexplored_points.append((i * map.info.resolution, j * map.info.resolution))
-
-        return unexplored_points
+        for i in range(margin, map.info.width - margin):
+            for j in range(margin, map.info.height - margin):
+                if map.data[i + j * map.info.width] == -1:
+                    # Oznacza to nieznaną pozycję na mapie (uwzględniając margines)
+                    return (i * map.info.resolution, j * map.info.resolution)
 
     def send_navigation_goal(self, goal_pose):
         self.get_logger().info('Sending navigation goal')
