@@ -18,8 +18,8 @@ LINEAR_FACTOR = 500         # 1 real meter = 1.0 /cmd_vel = 25317 robot units
 DELTA_RADIUS = 0.03         # distance between singe wheel and robot center
 ODOM_FREQUENCY = 2**5       # odometry messages per second -> optimal 2**5 (minimum 20Hz)
 
-MAX_SAFE_VELOCITY = 40
-# ANGULAR_FACTOR = 1
+MAX_SAFE_VELOCITY = 120
+ANGULAR_FACTOR = 225/270    # experimental; only for odometry purposes :P
 
 
 SERIAL_PORT = "/dev/ttyS0"
@@ -166,13 +166,14 @@ class MiaBotNode(Node):
         linear = msg.linear.x
         angular = msg.angular.z
 
-        self.odom_msg.twist.twist.linear.x = linear
-        self.odom_msg.twist.twist.angular.z = angular
-
-        v_left, v_right = self.process_cmd_vel_to_wheels(
+        v_left, v_right, real_linear, real_angular = self.process_cmd_vel_to_wheels(
             linear,
             angular
         )
+
+        self.odom_msg.twist.twist.linear.x = real_linear
+        self.odom_msg.twist.twist.angular.z = real_angular
+        
         self.write(
             self.msg_velocity(
                 v_left,
@@ -187,32 +188,24 @@ class MiaBotNode(Node):
         self.odom_msg.header.stamp = self.get_clock().now().to_msg()
         self.transform_msg_odom_base_footprint.header.stamp = self.get_clock().now().to_msg()
         self.transform_msg_odom_base_link.header.stamp = self.get_clock().now().to_msg()
-        # self.transform_msg_base_footprint_base_link.header.stamp = self.get_clock().now().to_msg()
-        # self.pose_msg.header.stamp = self.get_clock().now().to_msg()
 
         x_linear = self.odom_msg.twist.twist.linear.x
         z_angular = self.odom_msg.twist.twist.angular.z
         z_oriantation = self.odom_msg.pose.pose.orientation.z
 
-        self.odom_msg.pose.pose.position.x += cos(z_oriantation) * (x_linear*self.update_frequency)      # actual x 2d
-        self.odom_msg.pose.pose.position.y += sin(z_oriantation) * (x_linear*self.update_frequency)      # actual y 2d
+        self.odom_msg.pose.pose.position.x += cos(z_oriantation) * (x_linear*self.update_frequency)         # actual x 2d
+        self.odom_msg.pose.pose.position.y += sin(z_oriantation) * (x_linear*self.update_frequency)         # actual y 2d
 
-        self.odom_msg.pose.pose.orientation.z += (z_angular*self.update_frequency)                       # actual z rotation
+        self.odom_msg.pose.pose.orientation.z += (z_angular*self.update_frequency)                          # actual z rotation
         self.odom_msg.pose.pose.orientation.z = (self.odom_msg.pose.pose.orientation.z + pi) % (2 * pi) - pi
 
         self.transform_msg_odom_base_footprint.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
         self.transform_msg_odom_base_link.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
-        # self.pose_msg.pose.position.x = self.odom_msg.pose.pose.position.x
-        # self.transform_msg_base_footprint_base_link.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
         self.transform_msg_odom_base_footprint.transform.translation.y = self.odom_msg.pose.pose.position.y     # actual y 2d
         self.transform_msg_odom_base_link.transform.translation.y = self.odom_msg.pose.pose.position.y     # actual y 2d
-        # self.pose_msg.pose.position.y = self.odom_msg.pose.pose.position.y
-        # self.transform_msg_base_footprint_base_link.transform.translation.y = self.odom_msg.pose.pose.position.y     # actual y 2d
 
         self.transform_msg_odom_base_footprint.transform.rotation.z = self.odom_msg.pose.pose.orientation.z     # actual z rotation
         self.transform_msg_odom_base_link.transform.rotation.z = self.odom_msg.pose.pose.orientation.z     # actual z rotation
-        # self.pose_msg.pose.orientation.z = self.odom_msg.pose.pose.orientation.z
-        # self.transform_msg_base_footprint_base_link.transform.rotation.z = self.odom_msg.pose.pose.orientation.z     # actual z rotation
 
     def publish_odom(self):
         """
@@ -259,12 +252,17 @@ class MiaBotNode(Node):
         v_left = LINEAR_FACTOR * (linear - angular * DELTA_RADIUS)
         v_right = LINEAR_FACTOR * (linear + angular * DELTA_RADIUS)
 
-        if v_left > MAX_SAFE_VELOCITY or v_right > MAX_SAFE_VELOCITY:
-            self.get_logger().warning(f"Safe velocity exceeded:\n\tv_left: {v_left}\n\tv_right: {v_right}")
+        # if v_left > MAX_SAFE_VELOCITY or v_right > MAX_SAFE_VELOCITY:
+        #     self.get_logger().warning(f"Safe velocity exceeded:\n\tv_left: {v_left}\n\tv_right: {v_right}")
 
         v_left, v_right = min(v_left, MAX_SAFE_VELOCITY), min(v_right, MAX_SAFE_VELOCITY)
+        v_left, v_right = int(v_left), int(v_right)
 
-        return int(v_left), int(v_right)
+        # we need to reproduce real linear and angular velopcities for odometry
+        real_linear = (v_left + v_right) / (2 * LINEAR_FACTOR)
+        real_angular = (v_right - v_left) / (2 * LINEAR_FACTOR * DELTA_RADIUS)
+
+        return v_left, v_right, real_linear, real_angular
 
     def msg_velocity(self, v_left: int, v_right: int) -> str:
         return f"[=<{v_left}l>,<{v_right}r>]\n"
