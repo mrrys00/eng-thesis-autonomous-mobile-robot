@@ -50,6 +50,13 @@ class MiaBotNode(Node):
             '/cmd_vel',
             self.cmd_vel_callback,
             10)
+        
+        # Subscribe /pose
+        self.pose_subscription = self.create_subscription(
+            PoseStamped,
+            '/pose',
+            self.pose_callback,
+            10)
 
         # Miabot serial init
         self.serial_port = None
@@ -157,9 +164,15 @@ class MiaBotNode(Node):
         # self.pose_msg = _init_pose()        # provided by slam toolbox
 
 
+    def pose_callback(self, msg: PoseStamped):
+        """
+        Processes /pose messages 
+        """
+        self.get_logger().info(f'Received pose: 2D: [{msg.pose.position.x}, {msg.pose.position.y}, {msg.pose.position.z}], Rotation: [{msg.pose.orientation.x}, {msg.pose.orientation.y}, {msg.pose.orientation.z}, {msg.pose.orientation.w}]')
+
     def cmd_vel_callback(self, msg: Twist):
         """
-        Processes /cmd_vel messages to valid odometry type and 
+        Processes /cmd_vel messages to valid odometry type
         """
         self.get_logger().info(f'Received cmd_vel: Linear={msg.linear.x}, Angular={msg.angular.z}')
 
