@@ -32,7 +32,7 @@ class MiaBotNode(Node):
         super().__init__('miabot_node')
 
         self.update_frequency = 1.0 / ODOM_FREQUENCY
-        self.current_theta = 0.0    # miabot angular position
+        self.current_theta = pi/2    # miabot angular position
 
         # Subscribe /cmd_vel
         self.cmd_vel_subscription = self.create_subscription(
@@ -87,8 +87,8 @@ class MiaBotNode(Node):
             # actual rotation
             transform.transform.rotation.x = 0.0        # always 0
             transform.transform.rotation.y = 0.0        # always 0
-            transform.transform.rotation.z = 0.0        # actual radian rotation
-            transform.transform.rotation.w = 1.0        # always 1.0
+            transform.transform.rotation.z = 1.0        # actual for pi/2 it's sin(pi/2) = 1.0
+            transform.transform.rotation.w = 0.0        # always for pi/2 it's cos(pi/2) = 0.0
 
             return transform
 
