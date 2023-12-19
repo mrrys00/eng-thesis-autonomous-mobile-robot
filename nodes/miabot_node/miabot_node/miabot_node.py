@@ -193,6 +193,7 @@ class MiaBotNode(Node):
         self.odom_msg.pose.pose.position.y += sin(self.current_theta) * (x_linear*self.update_frequency)         # actual y 2d
 
         self.current_theta += (z_angular*self.update_frequency)                          # actual z rotation
+        self.current_theta %= 2*pi
         # self.odom_msg.pose.pose.orientation.z = (self.odom_msg.pose.pose.orientation.z + pi) % (2 * pi) - pi
 
         # self.transform_msg_odom_base_footprint.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
