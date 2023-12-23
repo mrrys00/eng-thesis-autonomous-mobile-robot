@@ -34,8 +34,21 @@ from nav2_common.launch import ReplaceString, RewrittenYaml
 
 
 def generate_launch_description():
+    # Create the launch description and populate
+    ld = LaunchDescription()
+
     # Get the launch directory
-    bringup_dir = get_package_share_directory('nav2_bringup')
+    bringup_dir = get_package_share_directory('project_bringup')
+
+    print("bringup_dir ", bringup_dir)
+
+    # rviz_node = Node(
+    #     package='rviz2',
+    #     namespace='',
+    #     executable='rviz2',
+    #     name='rviz2',
+    #     arguments=['-d' + os.path.join(get_package_share_directory("project_bringup"), 'rviz', 'nav2_default_view.rviz')]
+    # )
 
     # Create the launch configuration variables
     namespace = LaunchConfiguration('namespace')
@@ -43,7 +56,7 @@ def generate_launch_description():
     rviz_config_file = LaunchConfiguration('rviz_config')
 
     # Declare the launch arguments
-    declare_namespace_cmd = DeclareLaunchArgument(
+    declare_namespace_cmd_rviz = DeclareLaunchArgument(
         'namespace',
         default_value='navigation',
         description=(
@@ -111,10 +124,25 @@ def generate_launch_description():
         ),
     )
 
+    # Declare the launch options
+    ld.add_action(declare_namespace_cmd_rviz)
+    ld.add_action(declare_use_namespace_cmd)
+    ld.add_action(declare_rviz_config_file_cmd)
+
+    # Add any conditioned actions
+    ld.add_action(start_rviz_cmd)
+    ld.add_action(start_namespaced_rviz_cmd)
+
+    # Add other nodes and processes we need
+    ld.add_action(exit_event_handler)
+    ld.add_action(exit_event_handler_namespaced)
+
+    # ld.add_action(rviz_node)
+
     ##########################
 
     slam_config = os.path.join(
-        get_package_share_directory('startup'),
+        get_package_share_directory('project_bringup'),
         'config',
         'slam.yaml'
     )
@@ -126,6 +154,8 @@ def generate_launch_description():
         output='screen',
         parameters=[slam_config,]
     )
+
+    ld.add_action(slam_toolbox_node)
 
     ##########################
 
@@ -170,6 +200,12 @@ def generate_launch_description():
         allow_substs=True,
     )
 
+    # configured_params = os.path.join(
+    #     get_package_share_directory(bringup_dir),
+    #     'config',
+    #     'nav2_params.yaml'
+    # )
+
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1'
     )
@@ -186,9 +222,10 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
+        default_value=os.path.join(bringup_dir, 'config', 'nav2_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes',
     )
+    print("declare_params_file_cmd ", str(declare_params_file_cmd.describe()))
 
     declare_autostart_cmd = DeclareLaunchArgument(
         'autostart',
@@ -398,43 +435,6 @@ def generate_launch_description():
         ],
     )
 
-    ##########################
-
-    # exploration_config = os.path.join(
-    #     get_package_share_directory('startup'),
-    #     'config',
-    #     'exploration_config.yaml'
-    # )
-
-    exploration_node = Node(
-        package='exploration_algotihm',
-        executable='exploration_algorithm_node',
-        name='exploration_algotihm',
-        output='screen',
-    )
-
-    ##########################
-
-    # Create the launch description and populate
-    ld = LaunchDescription()
-
-    # Declare the launch options
-    ld.add_action(declare_namespace_cmd)
-    ld.add_action(declare_use_namespace_cmd)
-    ld.add_action(declare_rviz_config_file_cmd)
-
-    # Add any conditioned actions
-    ld.add_action(start_rviz_cmd)
-    ld.add_action(start_namespaced_rviz_cmd)
-
-    # Add other nodes and processes we need
-    ld.add_action(exit_event_handler)
-    ld.add_action(exit_event_handler_namespaced)
-
-
-    ld.add_action(slam_toolbox_node)
-
-
     # Set environment variables
     ld.add_action(stdout_linebuf_envvar)
 
@@ -451,8 +451,23 @@ def generate_launch_description():
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
 
+    ##########################
 
-    ld.add_action(exploration_node)
+    # exploration_config = os.path.join(
+    #     get_package_share_directory('startup'),
+    #     'config',
+    #     'exploration_config.yaml'
+    # )
 
+    exploration_node = Node(
+        package='exploration_algorithm',
+        executable='exploration_algorithm_node',
+        name='exploration_algorithm',
+        output='screen',
+    )
+
+    # ld.add_action(exploration_node)
+
+    ##########################
 
     return ld
