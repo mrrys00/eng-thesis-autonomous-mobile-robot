@@ -17,10 +17,10 @@ NODE_EXPLORATION = exploration_algorithm/
 NODE_PROJECT_BRINGUP = project_bringup/
 
 SRC = src/
-STARTUP = startup/
+RESULTS = results/
 
 
-.SILENT: perpare_robot prepare_pc
+.SILENT: perpare_robot prepare_pc prepare_ros2_workspace test
 
 test:
 	echo $(USER)
@@ -28,44 +28,52 @@ test:
 	echo $(PROJECT_ROOT)
 	echo $(UBUNTU_CODE)
 	echo $(ARCH)
+	echo $$(date +%s)
 
 add_serial_port_privileges:
 	echo $(SUDO_PASSWORD) | sudo -S chown $(USER) /dev/ttyACM0 /dev/ttyS0
 
 install_ros2_humble:
-	sudo apt install software-properties-common -y
-	sudo add-apt-repository universe -y
-	sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+	echo $(SUDO_PASSWORD) | sudo -S apt install software-properties-common -y
+	echo $(SUDO_PASSWORD) | sudo -S add-apt-repository universe -y
+	echo $(SUDO_PASSWORD) | sudo -S curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 	echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(UBUNTU_CODE) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-	sudo apt update && sudo apt upgrade -y && sudo apt autoremove
-	sudo apt install ros-humble-ros-base ros-dev-tools -y
+	echo $(SUDO_PASSWORD) | sudo -S apt update && sudo apt upgrade -y && sudo apt autoremove
+	echo $(SUDO_PASSWORD) | sudo -S apt install ros-humble-ros-base ros-dev-tools -y
 	# source /opt/ros/humble/setup.bash
 	# echo "source /opt/ros/humble/setup.bash" >> .bashrc
 
 install_ros2_nodes:
-	sudo apt update
-	sudo apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-cyclonedds ros-humble-rmw-cyclonedds-cpp
+	echo $(SUDO_PASSWORD) | sudo -S apt update
+	echo $(SUDO_PASSWORD) | sudo -S apt install -y ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-cyclonedds ros-humble-rmw-cyclonedds-cpp
 	
 prepare_python_dependencies:
-	sudo apt install python3-pip
+	echo $(SUDO_PASSWORD) | sudo -S apt install python3-pip
 	pip3 install setuptools==58.2.0
 
 prepare_ros2_workspace:
 	mkdir -p $(ROS2_WORKSPACE)$(SRC)
-	cd $(ROS2_WORKSPACE)
+	mkdir -p $(ROS2_WORKSPACE)$(RESULTS)
+	$(MAKE) prepare_urg2_node
+	$(MAKE) copy_nodes
+	$(MAKE) build_ros2_workspace
 
 prepare_urg2_node:
-	cd $(ROS2_WORKSPACE)src/; \
+	cd $(ROS2_WORKSPACE)$(SRC); \
 	git clone --recursive https://github.com/Hokuyo-aut/urg_node2.git; \
+	echo $(SUDO_PASSWORD) | sudo -S rosdep init; \
 	rosdep update; \
 	rosdep install -i --from-paths urg_node2
 
 copy_nodes:
-	cp -r $(PROJECT_ROOT)$(NODES)$(NODE_PROJECT_BRINGUP) $(PROJECT_ROOT)$(NODES)$(NODE_MIABOT) $(PROJECT_ROOT)$(NODES)$(NODE_EXPLORATION) $(ROS2_WORKSPACE)src/
+	cp -r $(PROJECT_ROOT)$(NODES)$(NODE_PROJECT_BRINGUP) $(PROJECT_ROOT)$(NODES)$(NODE_MIABOT) $(PROJECT_ROOT)$(NODES)$(NODE_EXPLORATION) $(ROS2_WORKSPACE)$(SRC)
 
 build_ros2_workspace:
 	cd $(ROS2_WORKSPACE); \
-	colcon build
+	colcon build --symlink-install
+
+remove_ros2_workspace:
+	rm -rf $(ROS2_WORKSPACE)
 
 
 # these steps manually :)
@@ -95,3 +103,13 @@ prepare_pc:
 	$(MAKE) prepare_ros2_workspace
 	$(MAKE) copy_nodes
 	$(MAKE) build_ros2_workspace
+
+
+# tools
+view_frames:
+	cd $(ROS2_WORKSPACE)$(RESULTS); \
+	ros2 run tf2_tools view_frames
+
+save_map:
+	ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap "name: {data: '$(RESULTS)map_$$(date +%s)'}"
+	echo $$?
