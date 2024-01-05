@@ -40,8 +40,7 @@ install_ros2_humble:
 	echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(UBUNTU_CODE) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 	echo $(SUDO_PASSWORD) | sudo -S apt update && sudo apt upgrade -y && sudo apt autoremove
 	echo $(SUDO_PASSWORD) | sudo -S apt install ros-humble-ros-base ros-dev-tools -y
-	# source /opt/ros/humble/setup.bash
-	# echo "source /opt/ros/humble/setup.bash" >> .bashrc
+	echo "source /opt/ros/humble/setup.bash" >> .bashrc
 
 install_ros2_nodes:
 	echo $(SUDO_PASSWORD) | sudo -S apt update
