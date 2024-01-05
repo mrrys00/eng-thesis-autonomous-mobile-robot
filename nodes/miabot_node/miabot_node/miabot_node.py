@@ -11,11 +11,9 @@ from copy import deepcopy
 from math import pi, sin, cos
 
 import serial
-import tf2_ros
 
-# TODO
 LINEAR_FACTOR = 500         # 1 real meter = 1.0 /cmd_vel = 25317 robot units
-DELTA_RADIUS = 0.03         # distance between singe wheel and robot center
+DELTA_RADIUS = 0.034        # distance between singe wheel and robot center
 ODOM_FREQUENCY = 2**5       # odometry messages per second -> optimal 2**5 (minimum 20Hz)
 
 MAX_SAFE_VELOCITY = 120
@@ -72,7 +70,7 @@ class MiaBotNode(Node):
         # self.pose_publish_timer = self.create_timer(self.update_frequency, self.publish_pose)
         self.logger_timer = self.create_timer(3.0, self.publish_logs)
 
-        def _init_transform_odom_base_footprint() -> TransformStamped:
+        def _init_transform_odom_base_footprint() -> TransformStamped:  # TO DO get rid of this method - unnecessary
             transform = TransformStamped()
             transform.header.frame_id = 'odom'
             transform.header.stamp = self.get_clock().now().to_msg()
@@ -97,7 +95,7 @@ class MiaBotNode(Node):
             tf_odom_base_ftpr_copy.child_frame_id = 'base_link'
             return tf_odom_base_ftpr_copy
 
-        def _init_odometry() -> Odometry:       # as in turtlebot - OK
+        def _init_odometry() -> Odometry:
             odom_msg = Odometry()
             odom_msg.header.frame_id = "odom"
             odom_msg.header.stamp = self.get_clock().now().to_msg()
@@ -110,8 +108,8 @@ class MiaBotNode(Node):
 
             odom_msg.pose.pose.orientation.x = 0.0  # always 0
             odom_msg.pose.pose.orientation.y = 0.0  # always 0
-            odom_msg.pose.pose.orientation.z = 0.0  # actual radian rotation
-            odom_msg.pose.pose.orientation.w = 1.0  # always 1.0
+            odom_msg.pose.pose.orientation.z = 0.0  # actual for pi/2 it's sin(pi/2) = 1.0
+            odom_msg.pose.pose.orientation.w = 1.0  # always for pi/2 it's cos(pi/2) = 0.0
 
             odom_msg.twist.twist.linear.x = 0.0     # linear velocity
             odom_msg.twist.twist.linear.y = 0.0     # always 0
@@ -142,7 +140,6 @@ class MiaBotNode(Node):
         self.odom_msg = _init_odometry()
         self.transform_msg_odom_base_footprint = _init_transform_odom_base_footprint()
         self.transform_msg_odom_base_link = _init_transform_odom_base_link(self.transform_msg_odom_base_footprint)      # unnecessary ?
-        # self.transform_msg_base_footprint_base_link = _init_transform_base_foootprint_base_link(self.transform_msg_odom_base_link)
         # self.pose_msg = _init_pose()        # provided by slam toolbox
 
         self.get_logger().info('Miabot node started successfully')
@@ -244,7 +241,6 @@ class MiaBotNode(Node):
         """
         Processes recived linear and angular speed to valid robot left and right wheels move.
         """
-        # TO DO - not suer if that works properly
         v_left = LINEAR_FACTOR * (linear - angular * DELTA_RADIUS)
         v_right = LINEAR_FACTOR * (linear + angular * DELTA_RADIUS)
 

@@ -1,11 +1,13 @@
 import rclpy
+
+from geometry_msgs.msg import PoseStamped, TransformStamped
+from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.time import Time
-from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import OccupancyGrid
 from nav2_msgs.action import NavigateToPose
 from std_msgs.msg import Header
-from rclpy.action import ActionClient
+from tf2_msgs.msg import TFMessage
 
 from random import randint
 
@@ -24,13 +26,42 @@ class ExplorationAlgorithm(Node):
             self.map_callback,
             10)
         
-        # Utwórz klienta akcji nawigacyjnej
+        # Subscribe /tf
+        self.tf_subscription = self.create_subscription(
+            TFMessage,
+            '/tf',
+            self.tf_callback,
+            10)
+        
+        # Create navigation client
         self.navigation_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
         while not self.navigation_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().info('Waiting for navigation server...')
 
         self.last_goal_set_stamp: Time = self.get_clock().now()
+
+        def _init_position() -> TransformStamped:
+            transform = TransformStamped()
+            transform.header.frame_id = 'odom'
+            transform.header.stamp = self.get_clock().now().to_msg()
+
+            transform.child_frame_id = 'base_link'
+            
+            # actual position
+            transform.transform.translation.x = 0.0     # actual x
+            transform.transform.translation.y = 0.0     # actual y
+            transform.transform.translation.z = 0.0     # always 0
+
+            # actual rotation
+            transform.transform.rotation.x = 0.0        # always 0
+            transform.transform.rotation.y = 0.0        # always 0
+            transform.transform.rotation.z = 1.0        # actual for pi/2 it's sin(pi/2) = 1.0
+            transform.transform.rotation.w = 0.0        # always for pi/2 it's cos(pi/2) = 0.0
+
+            return transform
+
+        self.latest_position: TransformStamped = _init_position()
 
     def map_callback(self, msg: OccupancyGrid):
         """
@@ -52,6 +83,13 @@ class ExplorationAlgorithm(Node):
         else:
             self.get_logger().info('Waiting for prevoius goal ...')
 
+    def tf_callback(self, msg: TransformStamped):
+        """
+        Take tf message and change it to the latest position
+        """
+        if msg.header.frame_id == 'odom' and msg.child_frame_id == 'base_link':
+            self.latest_position = msg
+
     def find_next_point(self, map: OccupancyGrid, margin: int=100):
         """
         Find next goal
@@ -62,18 +100,8 @@ class ExplorationAlgorithm(Node):
 
         unexplored_points: list[tuple[int, int]] = []
 
-        while len(unexplored_points) < 10:
-            # temporary code ... it's nonsense
-            i = randint(margin, map.info.width - margin)
-            j = randint(margin, map.info.height - margin)
-            if map.data[i + j * map.info.width] == -1:
-                return (i * map.info.resolution, j * map.info.resolution)
-
-        # for i in range(margin, map.info.width - margin):
-        #     for j in range(margin, map.info.height - margin):
-        #         if map.data[i + j * map.info.width] == -1:
-        #             # Oznacza to nieznaną pozycję na mapie (uwzględniając margines)
-        #             return (i * map.info.resolution, j * map.info.resolution)
+        # TO DO
+        # based on latest position randomize change position vector based on map length 
 
     def send_navigation_goal(self, goal_pose):
         """
