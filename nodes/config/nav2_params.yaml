@@ -170,15 +170,15 @@ controller_server:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 5.0
-      publish_frequency: 2.0
+      update_frequency: 32.0
+      publish_frequency: 32.0
       global_frame: odom
       robot_base_frame: base_link
       use_sim_time: False
       rolling_window: true
       width: 2
       height: 2
-      resolution: 0.01
+      resolution: 0.03
       robot_radius: 0.07
       plugins: ["range_layer", "obstacle_layer", "inflation_layer"]
       inflation_layer:
@@ -220,8 +220,8 @@ local_costmap:
 global_costmap:
   global_costmap:
     ros__parameters:
-      update_frequency: 32.0
-      publish_frequency: 32.0
+      update_frequency: 5.0
+      publish_frequency: 2.0
       global_frame: map
       robot_base_frame: base_link
       use_sim_time: False
@@ -333,4 +333,4 @@ velocity_smoother:
     odom_topic: "odom"
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
-    velocity_timeout: 1.0
+    velocity_timeout: 0.1

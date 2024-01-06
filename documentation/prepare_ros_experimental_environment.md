@@ -197,7 +197,7 @@ ros2 run python_data_processor data_processor   # TO DO process data from nav2_w
 ros2 launch nav2_bringup rviz_launch.py
 ros2 run slam_toolbox async_slam_toolbox_node --ros-args --params-file slam.yaml
 ros2 launch nav2_bringup navigation_launch.py params_file:=nav2_params2.yaml
-ros2 run exploration_algotihm exploration_algorithm_node  # TO DO 
+ros2 run exploration_algorithm exploration_algorithm_node  # TO DO 
 
 # run on RPi
 ros2 launch urg_node2 urg_node2.launch.py
