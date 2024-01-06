@@ -8,10 +8,15 @@ from nav_msgs.msg import OccupancyGrid
 from nav2_msgs.action import NavigateToPose
 from std_msgs.msg import Header
 from tf2_msgs.msg import TFMessage
+from sensor_msgs.msg import LaserScan
+from tf_transformations import euler_from_quaternion
 
-from random import randint
+from math import pi, sin, cos
+from random import randint, choice as rand_choice
 
-FIND_GOAL_DELAY = 20.0 * 10**9      # nanoseconds
+FIND_GOAL_DELAY = 20.0
+GOAL_AREA_NUM = 9
+ALLOWED_AVG_DIST = 0.5
 
 class ExplorationAlgorithm(Node):
 
@@ -31,6 +36,13 @@ class ExplorationAlgorithm(Node):
             TFMessage,
             '/tf',
             self.tf_callback,
+            10)
+        
+        # Subscribe /scan
+        self.scan_subscription = self.create_subscription(
+            LaserScan,
+            '/scan',
+            self.scan_callback,
             10)
         
         # Create navigation client
@@ -62,46 +74,136 @@ class ExplorationAlgorithm(Node):
             return transform
 
         self.latest_position: TransformStamped = _init_position()
+        self.latest_scan: LaserScan = LaserScan()
+
+        self.find_goal_timer = self.create_timer(FIND_GOAL_DELAY, self.find_goal)
 
     def map_callback(self, msg: OccupancyGrid):
         """
         Take latest map
         """
-        next_point = self.find_next_point(msg)
-        if next_point:
-            # delegate to the separate method
-            goal_pose = PoseStamped()
-            goal_pose.header = Header()
-            goal_pose.header.frame_id = 'map'
-            goal_pose.header.stamp = self.get_clock().now().to_msg()
+        pass
+        # next_point = self.find_next_point(msg)
+        # if next_point:
+        #     # delegate to the separate method
+        #     goal_pose = PoseStamped()
+        #     goal_pose.header = Header()
+        #     goal_pose.header.frame_id = 'map'
+        #     goal_pose.header.stamp = self.get_clock().now().to_msg()
             
-            goal_pose.pose.position.x = next_point[0]
-            goal_pose.pose.position.y = next_point[1]
-            goal_pose.pose.orientation.w = 1.0
+        #     goal_pose.pose.position.x = next_point[0]
+        #     goal_pose.pose.position.y = next_point[1]
+        #     goal_pose.pose.orientation.w = 1.0
 
-            self.send_navigation_goal(goal_pose)
-        else:
-            self.get_logger().info('Waiting for prevoius goal ...')
+        #     self.send_navigation_goal(goal_pose)
+        # else:
+        #     self.get_logger().info('Waiting for prevoius goal ...')
 
     def tf_callback(self, msg: TransformStamped):
         """
         Take tf message and change it to the latest position
         """
+        msg = self.convert_tf_message(msg)
         if msg.header.frame_id == 'odom' and msg.child_frame_id == 'base_link':
             self.latest_position = msg
+            self.get_logger().info(f"x: {self.latest_position.transform.translation.x} y: {self.latest_position.transform.translation.y}, thetha: {euler_from_quaternion([self.latest_position.transform.rotation.x, self.latest_position.transform.rotation.y, self.latest_position.transform.rotation.z, self.latest_position.transform.rotation.w])[2]}")
 
-    def find_next_point(self, map: OccupancyGrid, margin: int=100):
+    def scan_callback(self, msg: LaserScan):
         """
-        Find next goal
+        Take scan message
+        """
+        self.latest_scan = msg
+        self.get_logger().info(f"ranges: {msg.ranges[1]} len({len(msg.ranges)})")
+
+    def find_next_point(self, map: OccupancyGrid, margin: int=100) -> tuple[int, int] or None:
+        """
+        Find next goal based on explored map
         """
         time_now = self.get_clock().now()
-        if (time_now - self.last_goal_set_stamp).nanoseconds() < FIND_GOAL_DELAY:
+        if (time_now - self.last_goal_set_stamp) < FIND_GOAL_DELAY:
             return None
 
         unexplored_points: list[tuple[int, int]] = []
 
-        # TO DO
-        # based on latest position randomize change position vector based on map length 
+        return (0, 0)
+
+    def find_goal(self):
+        """
+        Find next goal based on Monte Carlo area choose
+        """
+        _areas_mean_dist: list[float] = []
+        allowed_areas_idxes: list[int] = []
+        latest_scans_num = len(self.latest_scan.ranges)
+
+        full_scan_area = 3/2*pi     # 270 deg - lidar area
+        single_area_radian = full_scan_area / GOAL_AREA_NUM
+
+        for area_num in range(GOAL_AREA_NUM):
+            area_dist = 0.0
+            for _scan in self.latest_scan.ranges[
+                latest_scans_num//GOAL_AREA_NUM*area_num
+                :latest_scans_num//GOAL_AREA_NUM*(area_num+1)]:
+                if _scan: area_dist += float(_scan)
+            
+            area_dist /= latest_scans_num/GOAL_AREA_NUM     # get mean distance
+            _areas_mean_dist.append(area_dist)
+
+        # find allowed areas
+        for area_idx, area_mean_dist in enumerate(_areas_mean_dist):
+            if area_mean_dist > ALLOWED_AVG_DIST: allowed_areas_idxes.append(area_idx)
+        
+        self.get_logger().info(f"{area_mean_dist}\n {allowed_areas_idxes}")
+
+        new_cords = PoseStamped()
+        if not allowed_areas_idxes:
+            # if no area allowed
+            new_cords = self.prepare_pose_stamped(-0.2, pi)
+        else: 
+            # possible to set next goal, choose one of allowed cords
+            choosen_area_idx = rand_choice(allowed_areas_idxes)
+            new_cords = self.prepare_pose_stamped(
+                _areas_mean_dist[choosen_area_idx] * 0.7,
+                -full_scan_area/2 + choosen_area_idx*single_area_radian + single_area_radian/2
+            )
+        
+        self.send_navigation_goal(new_cords)
+
+    def prepare_pose_stamped(self, straight_dist: float, angle_delta: float) -> PoseStamped:
+        """
+        Prepare PoseStamped message structure from distance and actual position
+        """
+        _x, _y, _theta = self.process_to_cords(straight_dist, angle_delta)
+
+        goal_pose = PoseStamped()
+        goal_pose.header = Header()
+        goal_pose.header.frame_id = 'map'
+        goal_pose.header.stamp = self.get_clock().now().to_msg()
+        
+        goal_pose.pose.position.x = _x
+        goal_pose.pose.position.y = _y
+        goal_pose.pose.orientation.z = sin(_theta / 2.0)
+        goal_pose.pose.orientation.w = cos(_theta / 2.0)
+
+        return goal_pose
+
+    def process_to_cords(self, straight_dist: float, angle_delta: float) -> tuple[int, int] or None:
+        """
+        Process stright line dist to cords based on actual position
+        """
+        actual_angle = euler_from_quaternion([
+            self.latest_position.transform.rotation.x,
+            self.latest_position.transform.rotation.y,
+            self.latest_position.transform.rotation.z,
+            self.latest_position.transform.rotation.w
+        ])[2]
+        actual_x = self.latest_position.transform.translation.x
+        actual_y = self.latest_position.transform.translation.y
+        
+        new_angle = (actual_angle + angle_delta) % (2*pi)
+        new_x = actual_x + straight_dist*cos(new_angle)
+        new_y = actual_y + straight_dist*sin(new_angle)
+
+        return new_x, new_y, new_angle 
 
     def send_navigation_goal(self, goal_pose):
         """
@@ -114,6 +216,27 @@ class ExplorationAlgorithm(Node):
         goal_msg.pose = goal_pose
 
         self.navigation_client.send_goal_async(goal_msg)
+
+    def convert_tf_message(self, tf_message: TFMessage) -> TransformStamped or None:
+        """"
+        Converts TFMessage to TransformStamped message
+        """
+        if isinstance(tf_message, TFMessage):
+            transforms_list = tf_message.transforms
+        else:
+            self.get_logger().info("Input is not a TFMessage")
+            return None
+
+        if transforms_list:
+            transform_stamped = transforms_list[0]
+            if isinstance(transform_stamped, TransformStamped):
+                return transform_stamped
+            else:
+                self.get_logger().info("TransformStamped not found in TFMessage")
+        else:
+            self.get_logger().info("TFMessage is empty")
+        
+        return None
 
 def main(args=None):
     rclpy.init(args=args)
