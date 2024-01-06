@@ -44,11 +44,12 @@ install_ros2_humble:
 
 install_ros2_nodes:
 	echo $(SUDO_PASSWORD) | sudo -S apt update
-	echo $(SUDO_PASSWORD) | sudo -S apt install -y ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-cyclonedds ros-humble-rmw-cyclonedds-cpp
+	echo $(SUDO_PASSWORD) | sudo -S apt install -y ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-cyclonedds ros-humble-rmw-cyclonedds-cpp ros-humble-tf-transformations
 	
 prepare_python_dependencies:
 	echo $(SUDO_PASSWORD) | sudo -S apt install python3-pip
 	pip3 install setuptools==58.2.0
+	pip3 install transforms3d
 
 prepare_ros2_workspace:
 	mkdir -p $(ROS2_WORKSPACE)$(SRC)
