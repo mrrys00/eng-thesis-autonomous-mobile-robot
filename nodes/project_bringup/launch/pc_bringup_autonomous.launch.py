@@ -453,4 +453,15 @@ def generate_launch_description():
 
     ##########################
 
+    exploration_node = Node(
+        package='exploration_algorithm',
+        executable='exploration_algorithm_node',
+        name='exploration_algorithm',
+        output='screen',
+    )
+
+    ld.add_action(exploration_node)
+
+    ##########################
+
     return ld

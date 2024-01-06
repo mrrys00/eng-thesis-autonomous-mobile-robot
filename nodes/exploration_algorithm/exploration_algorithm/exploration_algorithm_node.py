@@ -1,22 +1,22 @@
 import rclpy
 
 from geometry_msgs.msg import PoseStamped, TransformStamped
+from nav_msgs.msg import OccupancyGrid
+from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.time import Time
-from nav_msgs.msg import OccupancyGrid
-from nav2_msgs.action import NavigateToPose
-from std_msgs.msg import Header
-from tf2_msgs.msg import TFMessage
 from sensor_msgs.msg import LaserScan
+from std_msgs.msg import Header
 from tf_transformations import euler_from_quaternion
+from tf2_msgs.msg import TFMessage
 
 from math import pi, sin, cos
-from random import randint, choice as rand_choice
+from random import choice as rand_choice
 
-FIND_GOAL_DELAY = 20.0
+FIND_GOAL_DELAY = 16.0
 GOAL_AREA_NUM = 9
-ALLOWED_AVG_DIST = 0.5
+ALLOWED_AVG_DIST = 0.3
 
 class ExplorationAlgorithm(Node):
 
@@ -75,6 +75,7 @@ class ExplorationAlgorithm(Node):
 
         self.latest_position: TransformStamped = _init_position()
         self.latest_scan: LaserScan = LaserScan()
+        self.latest_map: OccupancyGrid = OccupancyGrid()
 
         self.find_goal_timer = self.create_timer(FIND_GOAL_DELAY, self.find_goal)
 
@@ -82,22 +83,7 @@ class ExplorationAlgorithm(Node):
         """
         Take latest map
         """
-        pass
-        # next_point = self.find_next_point(msg)
-        # if next_point:
-        #     # delegate to the separate method
-        #     goal_pose = PoseStamped()
-        #     goal_pose.header = Header()
-        #     goal_pose.header.frame_id = 'map'
-        #     goal_pose.header.stamp = self.get_clock().now().to_msg()
-            
-        #     goal_pose.pose.position.x = next_point[0]
-        #     goal_pose.pose.position.y = next_point[1]
-        #     goal_pose.pose.orientation.w = 1.0
-
-        #     self.send_navigation_goal(goal_pose)
-        # else:
-        #     self.get_logger().info('Waiting for prevoius goal ...')
+        self.latest_map = msg
 
     def tf_callback(self, msg: TransformStamped):
         """
@@ -106,26 +92,12 @@ class ExplorationAlgorithm(Node):
         msg = self.convert_tf_message(msg)
         if msg.header.frame_id == 'odom' and msg.child_frame_id == 'base_link':
             self.latest_position = msg
-            self.get_logger().info(f"x: {self.latest_position.transform.translation.x} y: {self.latest_position.transform.translation.y}, thetha: {euler_from_quaternion([self.latest_position.transform.rotation.x, self.latest_position.transform.rotation.y, self.latest_position.transform.rotation.z, self.latest_position.transform.rotation.w])[2]}")
 
     def scan_callback(self, msg: LaserScan):
         """
         Take scan message
         """
         self.latest_scan = msg
-        self.get_logger().info(f"ranges: {msg.ranges[1]} len({len(msg.ranges)})")
-
-    def find_next_point(self, map: OccupancyGrid, margin: int=100) -> tuple[int, int] or None:
-        """
-        Find next goal based on explored map
-        """
-        time_now = self.get_clock().now()
-        if (time_now - self.last_goal_set_stamp) < FIND_GOAL_DELAY:
-            return None
-
-        unexplored_points: list[tuple[int, int]] = []
-
-        return (0, 0)
 
     def find_goal(self):
         """
@@ -145,14 +117,12 @@ class ExplorationAlgorithm(Node):
                 :latest_scans_num//GOAL_AREA_NUM*(area_num+1)]:
                 if _scan: area_dist += float(_scan)
             
-            area_dist /= latest_scans_num/GOAL_AREA_NUM     # get mean distance
+            area_dist /= latest_scans_num/GOAL_AREA_NUM     # get mean distance for the area
             _areas_mean_dist.append(area_dist)
 
-        # find allowed areas
+        # find allowed areas; area is allowed when mean scan distance is greater than ALLOWED_AVG_DIST
         for area_idx, area_mean_dist in enumerate(_areas_mean_dist):
             if area_mean_dist > ALLOWED_AVG_DIST: allowed_areas_idxes.append(area_idx)
-        
-        self.get_logger().info(f"{area_mean_dist}\n {allowed_areas_idxes}")
 
         new_cords = PoseStamped()
         if not allowed_areas_idxes:
@@ -209,7 +179,7 @@ class ExplorationAlgorithm(Node):
         """
         Send navigation goal
         """
-        self.get_logger().info('Sending navigation goal')
+        self.get_logger().info(f'Sending navigation goal as xyzw: ({goal_pose.pose.position.x}, {goal_pose.pose.position.y}, {goal_pose.pose.orientation.z}, {goal_pose.pose.orientation.w})')
 
         # prepare goal
         goal_msg = NavigateToPose.Goal()
@@ -224,7 +194,7 @@ class ExplorationAlgorithm(Node):
         if isinstance(tf_message, TFMessage):
             transforms_list = tf_message.transforms
         else:
-            self.get_logger().info("Input is not a TFMessage")
+            self.get_logger().debug("Input is not a TFMessage")
             return None
 
         if transforms_list:
@@ -232,9 +202,9 @@ class ExplorationAlgorithm(Node):
             if isinstance(transform_stamped, TransformStamped):
                 return transform_stamped
             else:
-                self.get_logger().info("TransformStamped not found in TFMessage")
+                self.get_logger().debug("TransformStamped not found in TFMessage")
         else:
-            self.get_logger().info("TFMessage is empty")
+            self.get_logger().debug("TFMessage is empty")
         
         return None
 

@@ -1,16 +1,12 @@
 import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile, DurabilityPolicy
-from geometry_msgs.msg import Twist, TransformStamped, PoseStamped, Quaternion
-from tf2_msgs.msg import TFMessage
-from nav_msgs.msg import Odometry
-from time import sleep, time_ns
+import serial
 
-from copy import deepcopy
+from geometry_msgs.msg import Twist, TransformStamped
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
+from tf2_msgs.msg import TFMessage
 
 from math import pi, sin, cos
-
-import serial
 
 LINEAR_FACTOR = 500         # 1 real meter = 1.0 /cmd_vel = 25317 robot units
 DELTA_RADIUS = 0.034        # distance between singe wheel and robot center
@@ -38,13 +34,6 @@ class MiaBotNode(Node):
             '/cmd_vel',
             self.cmd_vel_callback,
             10)
-        
-        # Subscribe /pose
-        # self.pose_subscription = self.create_subscription(
-        #     PoseStamped,
-        #     '/pose',
-        #     self.pose_callback,
-        #     10)
 
         # Miabot serial init
         self.serial_port = None
@@ -60,14 +49,9 @@ class MiaBotNode(Node):
             TFMessage,
             '/tf',
             10)
-        # self.pose_publisher = self.create_publisher(
-        #     PoseStamped,
-        #     '/pose',
-        #     10)
 
         self.odom_publish_timer = self.create_timer(self.update_frequency, self.publish_odom)
         self.tf_publish_timer = self.create_timer(self.update_frequency, self.publish_tf)
-        # self.pose_publish_timer = self.create_timer(self.update_frequency, self.publish_pose)
         self.logger_timer = self.create_timer(3.0, self.publish_logs)
 
         def _init_transform_odom_base_link() -> TransformStamped:  # TO DO get rid of this method - unnecessary
@@ -116,39 +100,16 @@ class MiaBotNode(Node):
 
             return odom_msg
         
-        # def _init_pose() -> PoseStamped:
-        #     pose_msg = PoseStamped()
-        #     pose_msg.header.frame_id = 'map'
-        #     pose_msg.header.stamp = self.get_clock().now().to_msg()
-
-        #     pose_msg.pose.position.x = 0.0
-        #     pose_msg.pose.position.y = 0.0
-        #     pose_msg.pose.position.z = 0.0
-            
-        #     pose_msg.pose.orientation.x = 0.0
-        #     pose_msg.pose.orientation.y = 0.0
-        #     pose_msg.pose.orientation.z = 0.0
-        #     pose_msg.pose.orientation.w = 1.0
-
-        #     return pose_msg
-
         self.odom_msg = _init_odometry()
         self.transform_msg_odom_base_footprint = _init_transform_odom_base_link()
-        # self.pose_msg = _init_pose()        # provided by slam toolbox
 
         self.get_logger().info('Miabot node started successfully')
-
-    # def pose_callback(self, msg: PoseStamped):
-    #     """
-    #     Processes /pose messages 
-    #     """
-    #     self.get_logger().info(f'Received pose: 2D: [{msg.pose.position.x}, {msg.pose.position.y}, {msg.pose.position.z}], Rotation: [{msg.pose.orientation.x}, {msg.pose.orientation.y}, {msg.pose.orientation.z}, {msg.pose.orientation.w}]')
 
     def cmd_vel_callback(self, msg: Twist):
         """
         Processes /cmd_vel messages to valid odometry type
         """
-        # self.get_logger().info(f'Received cmd_vel: Linear={msg.linear.x}, Angular={msg.angular.z}')
+        self.get_logger().debug(f'Received cmd_vel: Linear={msg.linear.x}, Angular={msg.angular.z}')
 
         linear = msg.linear.x
         angular = msg.angular.z
@@ -183,7 +144,6 @@ class MiaBotNode(Node):
 
         self.current_theta += (z_angular*self.update_frequency)                          # actual z rotation
         self.current_theta %= 2*pi
-        # self.odom_msg.pose.pose.orientation.z = (self.odom_msg.pose.pose.orientation.z + pi) % (2 * pi) - pi
 
         self.transform_msg_odom_base_link.transform.translation.x = self.odom_msg.pose.pose.position.x     # actual x 2d
         self.transform_msg_odom_base_link.transform.translation.y = self.odom_msg.pose.pose.position.y     # actual y 2d
@@ -203,14 +163,9 @@ class MiaBotNode(Node):
         Publishes messages to /tf topic
         """
         tfm = TFMessage()
-        tfm.transforms.append(self.transform_msg_odom_base_link)      # unnecessary ?
+        tfm.transforms.append(self.transform_msg_odom_base_link)
         self.tf_publisher.publish(tfm)
 
-    # def publish_pose(self):
-    #     """
-    #     Publishes messages to /pose topic
-    #     """
-    #     self.pose_publisher.publish(self.pose_msg)
 
     def publish_logs(self):
         """
@@ -251,7 +206,7 @@ class MiaBotNode(Node):
         """
         try:
             self.serial_port.write(msg.encode('utf-8'))
-            # self.get_logger().info(f'Set speed to {msg}')
+            self.get_logger().debug(f'Set speed to {msg}')
         except Exception as err:
             self.get_logger().warning(f"Unexpected {err=}, {type(err)=}")
 
