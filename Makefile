@@ -46,7 +46,8 @@ install_ros2_humble:
 
 install_ros2_nodes:
 	echo $(SUDO_PASSWORD) | sudo -S apt update
-	echo $(SUDO_PASSWORD) | sudo -S apt install -y ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-cyclonedds ros-humble-rmw-cyclonedds-cpp ros-humble-tf-transformations ros-humble-rqt
+	echo $(SUDO_PASSWORD) | sudo -S apt install -y ros-humble-turtlebot3* ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-cyclonedds ros-humble-rmw-cyclonedds-cpp ros-humble-tf-transformations ros-humble-rqt
+	ros-humble-turtlebot3* 
 	
 prepare_python_dependencies:
 	echo $(SUDO_PASSWORD) | sudo -S apt install python3-pip
