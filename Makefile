@@ -11,6 +11,7 @@ SUDO_PASSWORD = 12345678
 ROS2_WORKSPACE = ./ros2_workspace/
 PROJECT_ROOT = ./
 
+ROS_DISTRO=humble
 NODES = nodes/
 NODE_MIABOT = miabot_node/
 NODE_EXPLORATION = exploration_algorithm/
@@ -40,7 +41,8 @@ install_ros2_humble:
 	echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(UBUNTU_CODE) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 	echo $(SUDO_PASSWORD) | sudo -S apt update && sudo apt upgrade -y && sudo apt autoremove
 	echo $(SUDO_PASSWORD) | sudo -S apt install ros-humble-ros-base ros-dev-tools -y
-	echo "source /opt/ros/humble/setup.bash" >> .bashrc
+	echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+	echo "ROS_DISTRO=$(ROS_DISTRO)" >> ~/.bashrc
 
 install_ros2_nodes:
 	echo $(SUDO_PASSWORD) | sudo -S apt update
@@ -93,17 +95,11 @@ prepare_robot:
 	$(MAKE) install_ros2_humble
 	$(MAKE) add_serial_port_privileges
 	$(MAKE) prepare_ros2_workspace
-	$(MAKE) copy_nodes
-	$(MAKE) prepare_urg2_node
-	$(MAKE) build_ros2_workspace
 
 prepare_pc:
 	$(MAKE) install_ros2_humble
 	$(MAKE) install_ros2_nodes
 	$(MAKE) prepare_ros2_workspace
-	$(MAKE) copy_nodes
-	$(MAKE) build_ros2_workspace
-
 
 # tools
 view_frames:
