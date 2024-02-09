@@ -11,6 +11,7 @@ SUDO_PASSWORD = 12345678
 ROS2_WORKSPACE = ./ros2_workspace/
 PROJECT_ROOT = ./
 
+ROS_DISTRO=humble
 NODES = nodes/
 NODE_MIABOT = miabot_node/
 NODE_EXPLORATION = exploration_algorithm/
@@ -36,15 +37,18 @@ add_serial_port_privileges:
 install_ros2_humble:
 	echo $(SUDO_PASSWORD) | sudo -S apt install software-properties-common -y
 	echo $(SUDO_PASSWORD) | sudo -S add-apt-repository universe -y
+	echo $(SUDO_PASSWORD) | sudo -S apt install curl -y
 	echo $(SUDO_PASSWORD) | sudo -S curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 	echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(UBUNTU_CODE) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 	echo $(SUDO_PASSWORD) | sudo -S apt update && sudo apt upgrade -y && sudo apt autoremove
 	echo $(SUDO_PASSWORD) | sudo -S apt install ros-humble-ros-base ros-dev-tools -y
-	echo "source /opt/ros/humble/setup.bash" >> .bashrc
+	echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+	echo "ROS_DISTRO=$(ROS_DISTRO)" >> ~/.bashrc
 
 install_ros2_nodes:
 	echo $(SUDO_PASSWORD) | sudo -S apt update
-	echo $(SUDO_PASSWORD) | sudo -S apt install -y ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-cyclonedds ros-humble-rmw-cyclonedds-cpp ros-humble-tf-transformations
+	echo $(SUDO_PASSWORD) | sudo -S apt install -y ros-humble-turtlebot3* ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-cyclonedds ros-humble-rmw-cyclonedds-cpp ros-humble-tf-transformations ros-humble-rqt
+	ros-humble-turtlebot3* 
 	
 prepare_python_dependencies:
 	echo $(SUDO_PASSWORD) | sudo -S apt install python3-pip
@@ -91,19 +95,15 @@ remove_ros2_workspace:
 
 prepare_robot:
 	$(MAKE) install_ros2_humble
-	$(MAKE) add_serial_port_privileges
 	$(MAKE) prepare_ros2_workspace
-	$(MAKE) copy_nodes
-	$(MAKE) prepare_urg2_node
-	$(MAKE) build_ros2_workspace
+
+before_ros_run_robot:
+	$(MAKE) add_serial_port_privileges
 
 prepare_pc:
 	$(MAKE) install_ros2_humble
 	$(MAKE) install_ros2_nodes
 	$(MAKE) prepare_ros2_workspace
-	$(MAKE) copy_nodes
-	$(MAKE) build_ros2_workspace
-
 
 # tools
 view_frames:
