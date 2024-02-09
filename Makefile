@@ -37,6 +37,7 @@ add_serial_port_privileges:
 install_ros2_humble:
 	echo $(SUDO_PASSWORD) | sudo -S apt install software-properties-common -y
 	echo $(SUDO_PASSWORD) | sudo -S add-apt-repository universe -y
+	echo $(SUDO_PASSWORD) | sudo -S apt install curl -y
 	echo $(SUDO_PASSWORD) | sudo -S curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 	echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(UBUNTU_CODE) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 	echo $(SUDO_PASSWORD) | sudo -S apt update && sudo apt upgrade -y && sudo apt autoremove
@@ -94,8 +95,10 @@ remove_ros2_workspace:
 
 prepare_robot:
 	$(MAKE) install_ros2_humble
-	$(MAKE) add_serial_port_privileges
 	$(MAKE) prepare_ros2_workspace
+
+before_ros_run_robot:
+	$(MAKE) add_serial_port_privileges
 
 prepare_pc:
 	$(MAKE) install_ros2_humble
