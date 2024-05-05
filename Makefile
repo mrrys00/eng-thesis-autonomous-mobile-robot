@@ -51,7 +51,7 @@ install_ros2_nodes:
 
 prepare_python_dependencies:
 	echo $(SUDO_PASSWORD) | sudo -S apt install python3-pip
-	pip3 install setuptools==58.2.0 transforms3d serial
+	pip3 install setuptools==58.2.0 transforms3d serial pyserial
 
 prepare_ros2_workspace:
 	mkdir -p $(ROS2_WORKSPACE)$(SRC)
