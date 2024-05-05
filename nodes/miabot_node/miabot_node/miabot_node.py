@@ -101,7 +101,7 @@ class MiaBotNode(Node):
             return odom_msg
         
         self.odom_msg = _init_odometry()
-        self.transform_msg_odom_base_footprint = _init_transform_odom_base_link()
+        self.transform_msg_odom_base_link = _init_transform_odom_base_link()
 
         self.get_logger().info('Miabot node started successfully')
 
