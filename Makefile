@@ -64,7 +64,8 @@ prepare_urg2_node:
 	cd $(ROS2_WORKSPACE)$(SRC); \
 	git clone --recursive https://github.com/Hokuyo-aut/urg_node2.git; \
 	echo $(SUDO_PASSWORD) | sudo -S rosdep init; \
-	cat ../../nodes/config/urg_node2.launch.py > urg_node2/launch/urg_node2.launch.py \
+	cat ../../nodes/config/urg_node2.launch.py > urg_node2/launch/urg_node2.launch.py; \
+	cat ../../nodes/config/params_serial.yaml > urg_node2/config/params_serial.yaml; \
 	rosdep update; \
 	rosdep install -i --from-paths urg_node2
 
